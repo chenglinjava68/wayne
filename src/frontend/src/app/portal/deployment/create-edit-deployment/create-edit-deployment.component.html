@@ -1,0 +1,170 @@
+<clr-modal [(clrModalOpen)]="modalOpened" [clrModalSize]="'lg'">
+  <h3 class="modal-title">{{title}}</h3>
+  <div class="modal-body">
+    <form #deploymentForm="ngForm" style="padding-right: 30px;width: 100%">
+      <section class="form-block">
+        <div class="form-group" style="padding-left: 135px;">
+          <label for="deployment_name"
+                 class="col-md-3 form-group-label-override required">{{'TITLE.NAME' | translate}}</label>
+          <label for="deployment_name" aria-haspopup="true" role="tooltip" [class.invalid]="!isNameValid"
+                 class="tooltip tooltip-validation tooltip-md tooltip-bottom-left">
+            <span *ngIf="app && actionType==0 && nameGenerateRuleConfig=='join'">{{app.name}}-</span>
+            <input type="text" id="deployment_name" [(ngModel)]="deployment.name"
+                   name="deployment_name"
+                   style="width: 15rem"
+                   required
+                   *ngIf="app && actionType==0"
+                   [readonly]="actionType==1"
+                   [placeholder]="'PLACEHOLDER.APP_NAME' | translate"
+                   pattern="[a-z]([-a-z0-9]*[a-z0-9])?"
+                   maxlength="64"
+                   (keyup)='handleValidation()'>
+            <span *ngIf="app && actionType==1">{{deployment.name}}</span>
+            <span class="tooltip-content">
+              {{'RULE.REGEXT' | translate}}[a-z]([-a-z0-9]*[a-z0-9])?
+        </span>
+          </label>
+          <span class="spinner spinner-inline" [hidden]="!checkOnGoing"></span>
+        </div>
+        <div class="form-group" style="padding-left: 135px;">
+          <label class="col-md-3 form-group-label-override required">{{'TITLE.CLUSTER' | translate}}</label>
+          <span class="warning-text" *ngIf="!clusters || clusters && clusters.length === 0">{{'DEPLOYMENT.CREATE_EDIT.CLUSTER_MESSAGE' | translate}}</span>
+          <div *ngFor="let cluster of clusters" class="checkbox-inline">
+            <div class="checkbox">
+              <input [(ngModel)]="clusterMetas[cluster.name].checked"
+                     type="checkbox"
+                     id="{{cluster.name}}-check"
+                     name="{{cluster.name}}-check">
+              <label for="{{cluster.name}}-check">{{cluster.name}}</label>
+              <label aria-haspopup="true"
+                     role="tooltip"
+                     [class.invalid]="!replicaValidation(cluster.name)"
+                     class="tooltip tooltip-validation tooltip-md tooltip-bottom-left">
+                <input [placeholder]="'DEPLOYMENT.NUM' | translate" [(ngModel)]="clusterMetas[cluster.name].value"
+                       id="{{cluster.name}}-replica"
+                       name="{{cluster.name}}-replica"
+                       type="number">
+                <span class="tooltip-content">
+                    {{'LIMIT.DEPLOYMENT' | translate}}{{replicaLimit}}
+              </span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="form-group" style="padding-left: 135px;">
+          <label for="deployment_description"
+                 class="col-md-3 form-group-label-override">{{'TITLE.DESCRIPTION' | translate}}</label>
+          <textarea id="deployment_description" [(ngModel)]="deployment.description"
+                    name="deployment_description"
+                    rows="3">
+          </textarea>
+        </div>
+        <div class="inline-flex-box" *ngIf="authService.currentUser.admin">
+          <div class="form-group self-item">
+            <label for="cpuLimit" class="col-md-4 form-group-label-override">{{'LIMIT.CPU' | translate}}</label>
+            <label for="cpuLimit"
+                   aria-haspopup="true"
+                   role="tooltip"
+                   class="tooltip tooltip-validation tooltip-md"
+            >
+              <input type="text" id="cpuLimit" [placeholder]="'LIMIT.CPU' | translate"
+                     name="cpuLimit"
+                     type="number"
+                     style="width: 110px;"
+                     [(ngModel)]="resourcesMetas.cpuLimit"
+                     #cpuLimit="ngModel">
+              <span class="tooltip-content">
+                    {{'MESSAGE.CPU' | translate}}
+                </span>
+            </label>
+            <div class="percent-label">{{'UNIT.CORE' | translate}}</div>
+          </div>
+          <div class="form-group self-item">
+            <label for="cpuRequestLimitPercent"
+                   class="col-md-5 form-group-label-override">{{'LIMIT.CPU_PERCENT' | translate}}</label>
+            <label for="cpuRequestLimitPercent"
+                   aria-haspopup="true"
+                   role="tooltip"
+                   class="tooltip tooltip-validation tooltip-md"
+                   [class.invalid]="!resourcesValidation('cpuRequestLimitPercent') && cpuRequestLimitPercent.touched">
+              <input type="text" id="cpuRequestLimitPercent" [placeholder]="'LIMIT.CPU_PERCENT' | translate"
+                     type="number"
+                     style="width: 110px;"
+                     name="cpuRequestLimitPercent"
+                     [(ngModel)]="resourcesMetas.cpuRequestLimitPercent"
+                     #cpuRequestLimitPercent="ngModel">
+              <span class="tooltip-content">
+                    {{'MESSAGE.CPU_PERCENT' | translate}}
+                </span>
+            </label>
+            <div class="percent-label">%</div>
+          </div>
+          <div class="form-group self-item">
+            <label for="memoryLimit" class="col-md-5 form-group-label-override">{{'LIMIT.MEMORY' | translate}}</label>
+            <label for="memoryLimit"
+                   aria-haspopup="true"
+                   role="tooltip"
+                   class="tooltip tooltip-validation tooltip-md"
+            >
+              <input type="text" id="memoryLimit" [placeholder]="'LIMIT.MEMORY' | translate"
+                     type="number"
+                     name="memoryLimit"
+                     style="width: 110px;"
+                     [(ngModel)]="resourcesMetas.memoryLimit"
+                     #memoryLimit="ngModel">
+              <span class="tooltip-content">
+                    {{'MESSAGE.MEMORY' | translate}}
+                </span>
+            </label>
+            <div class="percent-label">G</div>
+          </div>
+          <div class="form-group self-item">
+            <label for="memoryRequestLimitPercent"
+                   class="col-md-5 form-group-label-override">{{'LIMIT.MEMORY_PERCENT' | translate}}</label>
+            <label for="memoryRequestLimitPercent"
+                   aria-haspopup="true"
+                   role="tooltip"
+                   class="tooltip tooltip-validation tooltip-md"
+                   [class.invalid]="!resourcesValidation('memoryRequestLimitPercent') && memoryRequestLimitPercent.touched">
+              <input type="text" id="memoryRequestLimitPercent" [placeholder]="'LIMIT.MEMORY_PERCENT' | translate"
+                     style="width: 110px;"
+                     type="number"
+                     name="memoryRequestLimitPercent"
+                     [(ngModel)]="resourcesMetas.memoryRequestLimitPercent"
+                     #memoryRequestLimitPercent="ngModel">
+              <span class="tooltip-content">
+                    {{'MESSAGE.MEMORY_PERCENT' | translate}}
+                </span>
+            </label>
+            <div class="percent-label">%</div>
+          </div>
+          <div class="form-group self-item">
+            <label for="replicaLimit" class="col-md-5 form-group-label-override">{{'LIMIT.REPLICA' | translate}}</label>
+            <label for="replicaLimit"
+                   aria-haspopup="true"
+                   role="tooltip"
+                   class="tooltip tooltip-validation tooltip-md"
+            >
+              <input type="text" id="replicaLimit" [placeholder]="'LIMIT.REPLICA' | translate"
+                     type="number"
+                     name="replicaLimit"
+                     style="width: 110px;"
+                     [(ngModel)]="resourcesMetas.replicaLimit"
+                     #replicaLimit="ngModel">
+              <span class="tooltip-content">
+                    {{'MESSAGE.REPLICA' |translate}}
+                </span>
+            </label>
+            <div class="percent-label">{{'UNIT.PIECE' | translate}}</div>
+          </div>
+        </div>
+      </section>
+    </form>
+  </div>
+  <div class="modal-footer" style="padding-right: 5%">
+    <button type="button" class="btn btn-outline" (click)="onCancel()">{{'BUTTON.CANCEL' | translate}}</button>
+    <button type="button" class="btn btn-primary" [disabled]="!isValid"
+            (click)="onSubmit()">{{'BUTTON.CONFIRM' | translate}}</button>
+  </div>
+</clr-modal>
+
